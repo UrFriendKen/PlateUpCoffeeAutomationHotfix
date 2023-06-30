@@ -1,17 +1,13 @@
 ﻿using Kitchen;
-using System.Linq;
+using KitchenMods;
 using Unity.Collections;
 using Unity.Entities;
 
 namespace KitchenCoffeeAutomationHotfix
 {
-    public class CoffeeMachineFix : StartOfDaySystem
+    public class CoffeeMachineFix : NightSystem, IModSystem
     {
-        private const bool DEBUG_OVERRIDE_ENABLED = false;
         private const int COFFEE_MACHINE_APPLIANCE_ID = -1609758240;
-
-        private readonly string[] AFFECTED_VERSIONS = { "1.1.2" };
-        private static bool First = true;
 
         protected override void Initialise()
         {
@@ -20,33 +16,6 @@ namespace KitchenCoffeeAutomationHotfix
 
         protected override void OnUpdate()
         {
-            if (DEBUG_OVERRIDE_ENABLED)
-                Main.LogInfo("CoffeeMachineFix.OnUpdate()");
-
-            if (First)
-            {
-                string plateUpVersion = Main.PlateUpVersion;
-                Main.LogInfo($"PlateUp v{plateUpVersion}");
-                bool isVersionAffected = AFFECTED_VERSIONS.Contains(plateUpVersion);
-                string notText = isVersionAffected ? " " : " not ";
-                Main.LogInfo($"Version {plateUpVersion} is{notText}affected by Coffee Machine automation bug.");
-                if (!isVersionAffected)
-                {
-                    if (DEBUG_OVERRIDE_ENABLED)
-                    {
-                        Main.LogInfo("Debug override enabled. Skipping version disable.");
-                    }
-                    else
-                    {
-                        Main.LogInfo("Disabling CoffeeAutomationHotfix.");
-                        this.Enabled = false;
-                        return;
-                    }
-                }
-                First = false;
-            }
-
-
             EntityQuery ProvidersAppliances = GetEntityQuery(new QueryHelper()
                                               .All(typeof(CAppliance),
                                                    typeof(CItemProvider))
@@ -59,34 +28,12 @@ namespace KitchenCoffeeAutomationHotfix
                 if (applianceId == COFFEE_MACHINE_APPLIANCE_ID && !itemProvider.PreventReturns)
                 {
                     Main.LogInfo($"Coffee Machine found with ID: {appliance.Index}");
-
-                    LogCItemProviderProperties(itemProvider);
-
                     EntityManager.SetComponentData(appliance, GetUpdatedCItemProvider(itemProvider, preventReturns: true));
-
                     Main.LogInfo($"Component CItemProvider.PreventReturns for {appliance.Index} set to true.");
                 }
-
             }
             providersAppliances.Dispose();
         }
-
-        private static void LogCItemProviderProperties(CItemProvider p)
-        {
-            Main.LogInfo("Initial CItemProvider Properties:");
-            Main.LogInfo($"Available = {p.Available}");
-            Main.LogInfo($"Maximum = {p.Maximum}");
-            Main.LogInfo($"DirectInsertionOnly = {p.DirectInsertionOnly}");
-            Main.LogInfo($"EmptyAtNight = {p.EmptyAtNight}");
-            Main.LogInfo($"PreventReturns = {p.PreventReturns}");
-            Main.LogInfo($"DestroyOnEmpty = {p.DestroyOnEmpty}");
-            Main.LogInfo($"AutoGrabFromHolder = {p.AutoGrabFromHolder}");
-            Main.LogInfo($"AutoPlaceOnHolder = {p.AutoPlaceOnHolder}");
-            Main.LogInfo($"AllowRefreshes = {p.AllowRefreshes}");
-            Main.LogInfo($"ProvidedItem = {p.ProvidedItem}");
-            Main.LogInfo($"ProvidedComponents = {p.ProvidedComponents}");
-        }
-
 
         private static CItemProvider GetUpdatedCItemProvider(CItemProvider baseCItemProvider,
                                                              int? available = null,
